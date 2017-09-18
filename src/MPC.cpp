@@ -138,12 +138,12 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
 	bool ok = true;
 	typedef CPPAD_TESTVECTOR(double) Dvector;
 
-	double x    = state[0];
-	double y    = state[1];
-	double psi  = state[2];
-	double v    = state[3];
-	double cte  = state[4];
-	double epsi = state[5];
+	const double x    = state[0];
+	const double y    = state[1];
+	const double psi  = state[2];
+	const double v    = state[3];
+	const double cte  = state[4];
+	const double epsi = state[5];
 
 	// number of independent variables
 	// N timesteps == N - 1 actuations
@@ -156,6 +156,7 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
 	for ( int ii = 0 ; ii < (int)n_vars ; ++ii ) {
 		vars[ii] = 0.0;
 	}
+
 	// Set the initial variable values
 	vars[x_start]    = x;
 	vars[y_start]    = y;

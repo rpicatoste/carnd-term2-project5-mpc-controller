@@ -75,6 +75,14 @@ Eigen::VectorXd polyfit(Eigen::VectorXd xvals, Eigen::VectorXd yvals,
 }
 
 
+void applyRotationAndTranslation( double x, double y, double px, double py, double psi, vector<double> &list_x, vector<double> &list_y)
+{
+	double dx = x - px;
+	double dy = y - py;
+	list_x.push_back(dx * cos(-psi) - dy * sin(-psi));
+	list_y.push_back(dx * sin(-psi) + dy * cos(-psi));
+}
+
 int main() {
 	uWS::Hub h;
 
@@ -106,19 +114,13 @@ int main() {
 
 
 					// Calculate steering angle and throttle using MPC.
-
 					// Get the points from the reference path and translate them to the car's perspective
 					vector<double> reference_path_x;
 					vector<double> reference_path_y;
 
 					for (int ii = 0; ii < (int)ptsx.size(); ii++) {
-
-						double dx = ptsx[ii] - px;
-						double dy = ptsy[ii] - py;
-						reference_path_x.push_back(dx * cos(-psi) - dy * sin(-psi));
-						reference_path_y.push_back(dx * sin(-psi) + dy * cos(-psi));
+						applyRotationAndTranslation( ptsx[ii], ptsy[ii], px, py, psi, reference_path_x, reference_path_y);
 					}
-
 
 					Eigen::Map<Eigen::VectorXd> reference_path_x_eig(&reference_path_x[0], 6);
 					Eigen::Map<Eigen::VectorXd> reference_path_y_eig(&reference_path_y[0], 6);
