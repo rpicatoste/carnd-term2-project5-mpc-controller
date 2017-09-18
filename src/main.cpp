@@ -123,7 +123,7 @@ int main() {
 					Eigen::Map<Eigen::VectorXd> reference_path_x_eig(&reference_path_x[0], 6);
 					Eigen::Map<Eigen::VectorXd> reference_path_y_eig(&reference_path_y[0], 6);
 
-					auto coeffs = polyfit( reference_path_x_eig, reference_path_y_eig , 5);
+					auto coeffs = polyfit( reference_path_x_eig, reference_path_y_eig , 3);
 
 					double cte  = polyeval(coeffs, 0);
 					double epsi = -atan( polyeval_derivative(coeffs, 0) );

@@ -80,8 +80,8 @@ public:
 
 	    // Minimize the value gap between sequential actuations.
 	    for (int t = 0; t < (int)N - 2; t++) {
-			fg[0] += CppAD::pow(vars[delta_start + t + 1] - vars[delta_start + t], 2);
-			fg[0] += CppAD::pow(vars[a_start + t + 1] - vars[a_start + t], 2);
+			fg[0] += 100 * CppAD::pow(vars[delta_start + t + 1] - vars[delta_start + t], 2);
+			fg[0] += 100 * CppAD::pow(vars[a_start + t + 1] - vars[a_start + t], 2);
 	    }
 
 		// Initial constraints
@@ -96,7 +96,7 @@ public:
 		fg[1 + epsi_start] 	= vars[epsi_start];
 
 		// The rest of the constraints
-		for (int t = 1; t < (int)N; t++) {
+		for (int t = 1; t < (int)N ; t++) {
 			AD<double> x1 	 = vars[x_start + t];
 			AD<double> y1 	 = vars[y_start + t];
 			AD<double> psi1  = vars[psi_start + t];
@@ -187,6 +187,7 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
 		vars_lowerbound[i] = -1.0;
 		vars_upperbound[i] = 1.0;
 	}
+	std::cout << "vars_upperbound" << vars_upperbound << std::endl << std::endl;
 
 	// Lower and upper limits for constraints
 	// All of these should be 0 except the initial state indices.
