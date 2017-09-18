@@ -101,25 +101,24 @@ int main() {
 					double py = j[1]["y"];
 					double psi = j[1]["psi"];
 					double v = j[1]["speed"];
+					double delta = j[1]["steering_angle"];
+					double acceleration = j[1]["throttle"];
 
-					/*
-					* TODO: Calculate steering angle and throttle using MPC.
-					*
-					* Both are in between [-1, 1].
-					*
-					*/
-					// TODO: fit a polynomial to the above x and y coordinates
 
-					// Get the points from the referencepath and translate them to the car's perspective
+					// Calculate steering angle and throttle using MPC.
+
+					// Get the points from the reference path and translate them to the car's perspective
 					vector<double> reference_path_x;
 					vector<double> reference_path_y;
 
 					for (int ii = 0; ii < (int)ptsx.size(); ii++) {
+
 						double dx = ptsx[ii] - px;
 						double dy = ptsy[ii] - py;
 						reference_path_x.push_back(dx * cos(-psi) - dy * sin(-psi));
 						reference_path_y.push_back(dx * sin(-psi) + dy * cos(-psi));
 					}
+
 
 					Eigen::Map<Eigen::VectorXd> reference_path_x_eig(&reference_path_x[0], 6);
 					Eigen::Map<Eigen::VectorXd> reference_path_y_eig(&reference_path_y[0], 6);
@@ -128,10 +127,20 @@ int main() {
 
 					double cte  = polyeval(coeffs, 0);
 					double epsi = -atan( polyeval_derivative(coeffs, 0) );
-					//double epsi = -atan(coeffs[1]);
 
 					Eigen::VectorXd state(6);
-					state << 0.0, 0.0, 0.0, v, cte, epsi;
+
+					// predict state in 100ms
+					const double Lf = 2.67;
+					double latency = 0.1;
+					px = 0.0 + v*latency;
+					py = 0.0;
+					psi = 0.0 + v*(-delta)/Lf*latency;
+					v = v + acceleration*latency;
+			        cte = cte + v * sin(epsi) * latency;
+			        epsi = epsi + v * (-delta) / Lf * latency;
+
+			        state << px, py, psi, v, cte, epsi;
 					auto vars = mpc.Solve(state, coeffs);
 
 					double steer_value = vars[0];
@@ -179,16 +188,9 @@ int main() {
 
 					auto msg = "42[\"steer\"," + msgJson.dump() + "]";
 					std::cout << msg << std::endl;
+
 					// Latency
-					// The purpose is to mimic real driving conditions where
-					// the car does actuate the commands instantly.
-					//
-					// Feel free to play around with this value but should be to drive
-					// around the track with 100ms latency.
-					//
-					// NOTE: REMEMBER TO SET THIS TO 100 MILLISECONDS BEFORE
-					// SUBMITTING.
-					this_thread::sleep_for(chrono::milliseconds(1));
+					this_thread::sleep_for(chrono::milliseconds(100));
 					ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
 				}
 			} else {
