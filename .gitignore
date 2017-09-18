@@ -7,3 +7,11 @@ install_ipopt.sh
 install-ubuntu.sh
 install-mac.sh
 CODEOWNERS
+CMakeFiles/
+.settings/
+cmake_install.cmake
+.project
+.cproject
+Makefile
+CMakeCache.txt
+mpc
