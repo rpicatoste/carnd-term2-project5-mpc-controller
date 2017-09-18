@@ -57,20 +57,15 @@ public:
 	FG_eval(Eigen::VectorXd coeffs) { this->coeffs = coeffs; }
 
 	typedef CPPAD_TESTVECTOR(AD<double>) ADvector;
+
 	void operator()(ADvector& fg, const ADvector& vars) {
-		// TODO: implement MPC
+		// MPC implementation.
 		// `fg` a vector of the cost constraints, `vars` is a vector of variable values (state & actuators)
-		// NOTE: You'll probably go back and forth between this function and
-		// the Solver function below.
 		// The cost is stored is the first element of `fg`.
 		// Any additions to the cost should be added to `fg[0]`.
 		fg[0] = 0;
 
 		// Reference State Cost
-		// TODO: Define the cost related the reference state and
-		// any anything you think may be beneficial.
-
-	    // The part of the cost based on the reference state.
 	    for (int t = 0; t < (int)N; t++) {
 			fg[0] += CppAD::pow(vars[cte_start + t], 2);
 			fg[0] += CppAD::pow(vars[epsi_start + t], 2);
@@ -89,15 +84,10 @@ public:
 			fg[0] += CppAD::pow(vars[a_start + t + 1] - vars[a_start + t], 2);
 	    }
 
-		//
-		// Setup Constraints
-		//
-
 		// Initial constraints
 		//
 		// We add 1 to each of the starting indices due to cost being located at
-		// index 0 of `fg`.
-		// This bumps up the position of all the other values.
+		// index 0 of `fg`. This bumps up the position of all the other values.
 		fg[1 + x_start] 	= vars[x_start];
 		fg[1 + y_start] 	= vars[y_start];
 		fg[1 + psi_start]	= vars[psi_start];
@@ -128,22 +118,13 @@ public:
 			AD<double> f0 = polyeval( coeffs, x0 );
 			AD<double> psides0 = CppAD::atan( polyeval_derivative( coeffs, x0 ) );
 
-			// Here's `x` to get you started.
-			// The idea here is to constraint this value to be 0.
-			//
-			// NOTE: The use of `AD<double>` and use of `CppAD`!
-			// This is also CppAD can compute derivatives and pass
-			// these to the solver.
-
-			// TODO: Setup the rest of the model constraints
-			fg[1 + x_start + t] = x1 - (x0 + v0 * CppAD::cos(psi0) * dt);
-			fg[1 + y_start + t] = y1 - (y0 + v0 * CppAD::sin(psi0) * dt);
-			fg[1 + psi_start + t] = psi1 - (psi0 + v0 * delta0 / Lf * dt);
-			fg[1 + v_start + t] = v1 - (v0 + a0 * dt);
-			fg[1 + cte_start + t] = cte1 - ((f0 - y0) + (v0 * CppAD::sin(epsi0) * dt));
+			fg[1 + x_start + t]    = x1 -    (x0 + v0 * CppAD::cos(psi0) * dt);
+			fg[1 + y_start + t]    = y1 -    (y0 + v0 * CppAD::sin(psi0) * dt);
+			fg[1 + psi_start + t]  = psi1 -  (psi0 + v0 * delta0 / Lf * dt);
+			fg[1 + v_start + t]    = v1 -    (v0 + a0 * dt);
+			fg[1 + cte_start + t]  = cte1 -  ((f0 - y0) + (v0 * CppAD::sin(epsi0) * dt));
 			fg[1 + epsi_start + t] = epsi1 - ((psi0 - psides0) + v0 * delta0 / Lf * dt);
 		}
-
   }
 };
 
@@ -157,20 +138,11 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
 	bool ok = true;
 	typedef CPPAD_TESTVECTOR(double) Dvector;
 
-	// TODO: Set the number of model variables (includes both states and inputs).
-	// For example: If the state is a 4 element vector, the actuators is a 2
-	// element vector and there are 10 timesteps. The number of variables is:
-	//
-	// 4 * 10 + 2 * 9
-	// size_t n_vars = 0;
-	// TODO: Set the number of constraints
-	//  size_t n_constraints = 0;
-
-	double x = state[0];
-	double y = state[1];
-	double psi = state[2];
-	double v = state[3];
-	double cte = state[4];
+	double x    = state[0];
+	double y    = state[1];
+	double psi  = state[2];
+	double v    = state[3];
+	double cte  = state[4];
 	double epsi = state[5];
 
 	// number of independent variables
@@ -179,18 +151,17 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
 	// Number of constraints
 	size_t n_constraints = N * 6;
 
-	// Initial value of the independent variables.
-	// Should be 0 except for the initial values.
+	// Initial value of the independent variables. Should be 0 except for the initial values.
 	Dvector vars(n_vars);
-	for (int i = 0; i < (int)n_vars; i++) {
-		vars[i] = 0.0;
+	for ( int ii = 0 ; ii < (int)n_vars ; ++ii ) {
+		vars[ii] = 0.0;
 	}
 	// Set the initial variable values
-	vars[x_start] = x;
-	vars[y_start] = y;
-	vars[psi_start] = psi;
-	vars[v_start] = v;
-	vars[cte_start] = cte;
+	vars[x_start]    = x;
+	vars[y_start]    = y;
+	vars[psi_start]  = psi;
+	vars[v_start]    = v;
+	vars[cte_start]  = cte;
 	vars[epsi_start] = epsi;
 
 	// Lower and upper limits for x
@@ -206,22 +177,19 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
 
 	// The upper and lower limits of delta are set to -25 and 25
 	// degrees (values in radians).
-	// NOTE: Feel free to change this to something else.
 	for (int i = delta_start; i < (int)a_start; i++) {
 		vars_lowerbound[i] = -0.436332;
-		vars_upperbound[i] = 0.436332;
+		vars_upperbound[i] =  0.436332;
 	}
 
-	// Acceleration/decceleration upper and lower limits.
-	// NOTE: Feel free to change this to something else.
+	// Acceleration/deceleration upper and lower limits.
 	for (int i = a_start; i < (int)n_vars; i++) {
 		vars_lowerbound[i] = -1.0;
 		vars_upperbound[i] = 1.0;
 	}
 
 	// Lower and upper limits for constraints
-	// All of these should be 0 except the initial
-	// state indices.
+	// All of these should be 0 except the initial state indices.
 	Dvector constraints_lowerbound(n_constraints);
 	Dvector constraints_upperbound(n_constraints);
 	for (int i = 0; i < (int)n_constraints; i++) {
@@ -274,22 +242,22 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
 	// Check some of the solution values
 	ok &= solution.status == CppAD::ipopt::solve_result<Dvector>::success;
 
-	// Cost
-	auto cost = solution.obj_value;
-	std::cout << "Cost " << cost << std::endl;
-
-	// TODO: Return the first actuator values. The variables can be accessed with
-	// `solution.x[i]`.
-
 	vector<double> return_vector;
-	// First the control actions.
-	return_vector.push_back(solution.x[delta_start]);
-	return_vector.push_back(solution.x[a_start]);
-	// Then the predicted x,y path to plot in front of the car.
-	for( int in = 0 ; in < (int)N ; ++in){
-		return_vector.push_back(solution.x[x_start + in]);
-		return_vector.push_back(solution.x[y_start + in]);
-	}
+	if( ok ){
+		auto cost = solution.obj_value;
+		std::cout << "Cost " << cost << std::endl << std::endl;
 
+		// Return the first actuator values.
+		return_vector.push_back(solution.x[delta_start]);
+		return_vector.push_back(solution.x[a_start]);
+		// Then the predicted x,y path to plot in front of the car.
+		for( int in = 0 ; in < (int)N ; ++in){
+			return_vector.push_back(solution.x[x_start + in]);
+			return_vector.push_back(solution.x[y_start + in]);
+		}
+	}
+	else{
+		std::cout << "The solver could not solve the optimization. No values returned." << std::endl << std::endl;
+	}
 	return return_vector;
 }
