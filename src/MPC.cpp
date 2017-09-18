@@ -27,29 +27,41 @@ size_t delta_start 	= epsi_start + N;
 size_t a_start 		= delta_start + N - 1;
 
 // This value assumes the model presented in the classroom is used.
-//
-// It was obtained by measuring the radius formed by running the vehicle in the
-// simulator around in a circle with a constant steering angle and velocity on a
-// flat terrain.
-//
-// Lf was tuned until the the radius formed by the simulating the model
-// presented in the classroom matched the previous radius.
-//
 // This is the length from front to CoG that has a similar radius.
 const double Lf = 2.67;
 
-class FG_eval {
- public:
-  // Fitted polynomial coefficients
-  Eigen::VectorXd coeffs;
-  FG_eval(Eigen::VectorXd coeffs) { this->coeffs = coeffs; }
 
-  typedef CPPAD_TESTVECTOR(AD<double>) ADvector;
-  void operator()(ADvector& fg, const ADvector& vars) {
-    // TODO: implement MPC
-    // `fg` a vector of the cost constraints, `vars` is a vector of variable values (state & actuators)
-    // NOTE: You'll probably go back and forth between this function and
-    // the Solver function below.
+// Evaluate a polynomial.
+AD<double> polyeval(Eigen::VectorXd coeffs, AD<double> x) {
+	AD<double> result = 0.0;
+	for (int i = 0; i < (int)coeffs.size(); i++) {
+		result += coeffs[i] * pow(x, i);
+	}
+	return result;
+}
+
+// Evaluate the derivative of a polynomial.
+AD<double> polyeval_derivative(Eigen::VectorXd coeffs, AD<double> x) {
+	AD<double> result = 0.0;
+	for (int i = 1; i < (int)coeffs.size(); i++) {
+		result += i * coeffs[i] * pow(x, i-1);
+	}
+	return result;
+}
+
+
+class FG_eval {
+public:
+	// Fitted polynomial coefficients
+	Eigen::VectorXd coeffs;
+	FG_eval(Eigen::VectorXd coeffs) { this->coeffs = coeffs; }
+
+	typedef CPPAD_TESTVECTOR(AD<double>) ADvector;
+	void operator()(ADvector& fg, const ADvector& vars) {
+		// TODO: implement MPC
+		// `fg` a vector of the cost constraints, `vars` is a vector of variable values (state & actuators)
+		// NOTE: You'll probably go back and forth between this function and
+		// the Solver function below.
 		// The cost is stored is the first element of `fg`.
 		// Any additions to the cost should be added to `fg[0]`.
 		fg[0] = 0;
@@ -59,22 +71,22 @@ class FG_eval {
 		// any anything you think may be beneficial.
 
 	    // The part of the cost based on the reference state.
-	    for (int t = 0; t < N; t++) {
-	      fg[0] += CppAD::pow(vars[cte_start + t], 2);
-	      fg[0] += CppAD::pow(vars[epsi_start + t], 2);
-	      fg[0] += CppAD::pow(vars[v_start + t] - ref_v, 2);
+	    for (int t = 0; t < (int)N; t++) {
+			fg[0] += CppAD::pow(vars[cte_start + t], 2);
+			fg[0] += CppAD::pow(vars[epsi_start + t], 2);
+			fg[0] += CppAD::pow(vars[v_start + t] - ref_v, 2);
 	    }
 
 	    // Minimize the use of actuators.
-	    for (int t = 0; t < N - 1; t++) {
-	      fg[0] += 100 * CppAD::pow(vars[delta_start + t], 2);
-	      fg[0] += CppAD::pow(vars[a_start + t], 2);
+	    for (int t = 0; t < (int)N - 1; t++) {
+			fg[0] += 100 * CppAD::pow(vars[delta_start + t], 2);
+			fg[0] +=       CppAD::pow(vars[a_start + t], 2);
 	    }
 
 	    // Minimize the value gap between sequential actuations.
-	    for (int t = 0; t < N - 2; t++) {
-	      fg[0] += CppAD::pow(vars[delta_start + t + 1] - vars[delta_start + t], 2);
-	      fg[0] += CppAD::pow(vars[a_start + t + 1] - vars[a_start + t], 2);
+	    for (int t = 0; t < (int)N - 2; t++) {
+			fg[0] += CppAD::pow(vars[delta_start + t + 1] - vars[delta_start + t], 2);
+			fg[0] += CppAD::pow(vars[a_start + t + 1] - vars[a_start + t], 2);
 	    }
 
 		//
@@ -86,35 +98,35 @@ class FG_eval {
 		// We add 1 to each of the starting indices due to cost being located at
 		// index 0 of `fg`.
 		// This bumps up the position of all the other values.
-		fg[1 + x_start] = vars[x_start];
-		fg[1 + y_start] = vars[y_start];
-		fg[1 + psi_start] = vars[psi_start];
-		fg[1 + v_start] = vars[v_start];
-		fg[1 + cte_start] = vars[cte_start];
-		fg[1 + epsi_start] = vars[epsi_start];
+		fg[1 + x_start] 	= vars[x_start];
+		fg[1 + y_start] 	= vars[y_start];
+		fg[1 + psi_start]	= vars[psi_start];
+		fg[1 + v_start] 	= vars[v_start];
+		fg[1 + cte_start] 	= vars[cte_start];
+		fg[1 + epsi_start] 	= vars[epsi_start];
 
 		// The rest of the constraints
-		for (int t = 1; t < N; t++) {
-			AD<double> x1 = vars[x_start + t];
-			AD<double> y1 = vars[y_start + t];
-			AD<double> psi1 = vars[psi_start + t];
-			AD<double> v1 = vars[v_start + t];
-			AD<double> cte1 = vars[cte_start + t];
+		for (int t = 1; t < (int)N; t++) {
+			AD<double> x1 	 = vars[x_start + t];
+			AD<double> y1 	 = vars[y_start + t];
+			AD<double> psi1  = vars[psi_start + t];
+			AD<double> v1    = vars[v_start + t];
+			AD<double> cte1  = vars[cte_start + t];
 			AD<double> epsi1 = vars[epsi_start + t];
 
-			AD<double> x0 = vars[x_start + t - 1];
-			AD<double> y0 = vars[y_start + t - 1];
-			AD<double> psi0 = vars[psi_start + t - 1];
-			AD<double> v0 = vars[v_start + t - 1];
-			AD<double> cte0 = vars[cte_start + t - 1];
+			AD<double> x0 	 = vars[x_start + t - 1];
+			AD<double> y0 	 = vars[y_start + t - 1];
+			AD<double> psi0  = vars[psi_start + t - 1];
+			AD<double> v0 	 = vars[v_start + t - 1];
+			AD<double> cte0  = vars[cte_start + t - 1];
 			AD<double> epsi0 = vars[epsi_start + t - 1];
 
 			// Only consider the actuation at time t.
 			AD<double> delta0 = vars[delta_start + t - 1];
-			AD<double> a0 = vars[a_start + t - 1];
+			AD<double> a0     = vars[a_start + t - 1];
 
-			AD<double> f0 = coeffs[0] + coeffs[1] * x0;
-			AD<double> psides0 = CppAD::atan(coeffs[1]);
+			AD<double> f0 = polyeval( coeffs, x0 );
+			AD<double> psides0 = CppAD::atan( polyeval_derivative( coeffs, x0 ) );
 
 			// Here's `x` to get you started.
 			// The idea here is to constraint this value to be 0.
@@ -143,7 +155,6 @@ MPC::~MPC() {}
 
 vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
 	bool ok = true;
-	size_t i;
 	typedef CPPAD_TESTVECTOR(double) Dvector;
 
 	// TODO: Set the number of model variables (includes both states and inputs).
@@ -171,7 +182,7 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
 	// Initial value of the independent variables.
 	// Should be 0 except for the initial values.
 	Dvector vars(n_vars);
-	for (int i = 0; i < n_vars; i++) {
+	for (int i = 0; i < (int)n_vars; i++) {
 		vars[i] = 0.0;
 	}
 	// Set the initial variable values
@@ -188,7 +199,7 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
 
 	// Set all non-actuators upper and lowerlimits
 	// to the max negative and positive values.
-	for (int i = 0; i < delta_start; i++) {
+	for (int i = 0; i < (int)delta_start; i++) {
 		vars_lowerbound[i] = -1.0e19;
 		vars_upperbound[i] = 1.0e19;
 	}
@@ -196,14 +207,14 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
 	// The upper and lower limits of delta are set to -25 and 25
 	// degrees (values in radians).
 	// NOTE: Feel free to change this to something else.
-	for (int i = delta_start; i < a_start; i++) {
+	for (int i = delta_start; i < (int)a_start; i++) {
 		vars_lowerbound[i] = -0.436332;
 		vars_upperbound[i] = 0.436332;
 	}
 
 	// Acceleration/decceleration upper and lower limits.
 	// NOTE: Feel free to change this to something else.
-	for (int i = a_start; i < n_vars; i++) {
+	for (int i = a_start; i < (int)n_vars; i++) {
 		vars_lowerbound[i] = -1.0;
 		vars_upperbound[i] = 1.0;
 	}
@@ -213,7 +224,7 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
 	// state indices.
 	Dvector constraints_lowerbound(n_constraints);
 	Dvector constraints_upperbound(n_constraints);
-	for (int i = 0; i < n_constraints; i++) {
+	for (int i = 0; i < (int)n_constraints; i++) {
 		constraints_lowerbound[i] = 0;
 		constraints_upperbound[i] = 0;
 	}
@@ -275,7 +286,7 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
 	return_vector.push_back(solution.x[delta_start]);
 	return_vector.push_back(solution.x[a_start]);
 	// Then the predicted x,y path to plot in front of the car.
-	for( int in = 0 ; in < N ; ++in){
+	for( int in = 0 ; in < (int)N ; ++in){
 		return_vector.push_back(solution.x[x_start + in]);
 		return_vector.push_back(solution.x[y_start + in]);
 	}
