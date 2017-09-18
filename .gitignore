@@ -1,0 +1,9 @@
+.vscode
+build
+tags
+.editorconfig
+.DS_Store
+install_ipopt.sh
+install-ubuntu.sh
+install-mac.sh
+CODEOWNERS
